@@ -1,0 +1,228 @@
+MariaDB [project]> SELECT distinct Salary
+    -> FROM Worker
+    -> ORDER BY Salary DESC
+    -> LIMIT 0,2; -- imagine array, then, first two entries. Since this is sorted descending way, first two entries are the highest two
++--------+
+| Salary |
++--------+
+| 500000 |
+| 300000 |
++--------+
+2 rows in set (0.001 sec)
+
+MariaDB [project]> select *
+    -> from worker outr
+    -> where 2 = (
+    -> select count( distinct innr.salary )
+    ->     from worker innr
+    ->     where innr.salary >= outr.salary
+    -> );
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         3 | Vishal     | Singhal   | 300000 | 2014-02-20 09:00:00 | HR         |
++-----------+------------+-----------+--------+---------------------+------------+
+1 row in set (0.004 sec)
+
+MariaDB [project]> select *
+    -> from worker w1 join worker w2
+    -> on w1.salary = w2.salary and w1.worker_id <> w2.worker_id;
++-----------+------------+-----------+--------+---------------------+------------+-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT | WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+-----------+------------+-----------+--------+---------------------+------------+
+|         5 | Vivek      | Bhati     | 500000 | 2014-06-11 09:00:00 | Admin      |         4 | Amitabh    | Singh     | 500000 | 2014-02-20 09:00:00 | Admin      |
+|         4 | Amitabh    | Singh     | 500000 | 2014-02-20 09:00:00 | Admin      |         5 | Vivek      | Bhati     | 500000 | 2014-06-11 09:00:00 | Admin      |
++-----------+------------+-----------+--------+---------------------+------------+-----------+------------+-----------+--------+---------------------+------------+
+2 rows in set (0.001 sec)
+
+MariaDB [project]> select *
+    ->     from worker w1 join worker w2 using(salary)
+    -> where w1.worker_id <> w2.worker_id;
++--------+-----------+------------+-----------+---------------------+------------+-----------+------------+-----------+---------------------+------------+
+| SALARY | WORKER_ID | FIRST_NAME | LAST_NAME | JOINING_DATE        | DEPARTMENT | WORKER_ID | FIRST_NAME | LAST_NAME | JOINING_DATE        | DEPARTMENT |
++--------+-----------+------------+-----------+---------------------+------------+-----------+------------+-----------+---------------------+------------+
+| 500000 |         5 | Vivek      | Bhati     | 2014-06-11 09:00:00 | Admin      |         4 | Amitabh    | Singh     | 2014-02-20 09:00:00 | Admin      |
+| 500000 |         4 | Amitabh    | Singh     | 2014-02-20 09:00:00 | Admin      |         5 | Vivek      | Bhati     | 2014-06-11 09:00:00 | Admin      |
++--------+-----------+------------+-----------+---------------------+------------+-----------+------------+-----------+---------------------+------------+
+2 rows in set (0.000 sec)
+
+MariaDB [project]> select * from worker where first_name = 'Vipul'
+    -> union all -- keeps duplicate, whereas just 'union ' would not show duplicate
+    -> select * from worker where first_name = 'Vipul';
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         6 | Vipul      | Diwan     | 200000 | 2014-06-11 09:00:00 | Account    |
+|         6 | Vipul      | Diwan     | 200000 | 2014-06-11 09:00:00 | Account    |
++-----------+------------+-----------+--------+---------------------+------------+
+2 rows in set (0.000 sec)
+
+MariaDB [project]> select * from worker
+    -> where worker_id <= ( -- this works because worker_id is basically a unit incremental sequence
+    -> select count(worker_id)/2 from worker
+    -> );
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         1 | Monika     | Arora     | 100000 | 2014-02-20 09:00:00 | HR         |
+|         2 | Niharika   | Verma     |  80000 | 2014-06-11 09:00:00 | Admin      |
+|         3 | Vishal     | Singhal   | 300000 | 2014-02-20 09:00:00 | HR         |
+|         4 | Amitabh    | Singh     | 500000 | 2014-02-20 09:00:00 | Admin      |
++-----------+------------+-----------+--------+---------------------+------------+
+4 rows in set (0.003 sec)
+
+MariaDB [project]> select worker_id, department, count(worker_id) as num
+    -> from worker
+    -> group by department
+    -> having num > 3;
++-----------+------------+-----+
+| worker_id | department | num |
++-----------+------------+-----+
+|         2 | Admin      |   4 |
++-----------+------------+-----+
+1 row in set (0.001 sec)
+
+MariaDB [project]> select * from worker where worker_id = (select min(worker_id) from worker) -- can also be done through limit probably
+    -> union
+    -> select * from worker where worker_id = (select max(worker_id) from worker);
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         1 | Monika     | Arora     | 100000 | 2014-02-20 09:00:00 | HR         |
+|         8 | Geetika    | Chauhan   |  90000 | 2014-04-11 09:00:00 | Admin      |
++-----------+------------+-----------+--------+---------------------+------------+
+2 rows in set (0.003 sec)
+
+MariaDB [project]> select *
+    -> from (select * from worker
+    -> order by worker_id desc
+    -> limit 5) frsub
+    -> order by worker_id asc;
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         4 | Amitabh    | Singh     | 500000 | 2014-02-20 09:00:00 | Admin      |
+|         5 | Vivek      | Bhati     | 500000 | 2014-06-11 09:00:00 | Admin      |
+|         6 | Vipul      | Diwan     | 200000 | 2014-06-11 09:00:00 | Account    |
+|         7 | Satish     | Kumar     |  75000 | 2014-01-20 09:00:00 | Account    |
+|         8 | Geetika    | Chauhan   |  90000 | 2014-04-11 09:00:00 | Admin      |
++-----------+------------+-----------+--------+---------------------+------------+
+5 rows in set (0.000 sec)
+
+MariaDB [project]> select *
+    -> from ( select worker_id, first_name, department, salary
+    -> from worker
+    ->     order by salary desc
+    -> ) frsub
+    -> group by frsub.department;
++-----------+------------+------------+--------+
+| worker_id | first_name | department | salary |
++-----------+------------+------------+--------+
+|         6 | Vipul      | Account    | 200000 |
+|         2 | Niharika   | Admin      |  80000 |
+|         1 | Monika     | HR         | 100000 |
++-----------+------------+------------+--------+
+3 rows in set (0.000 sec)
+
+MariaDB [project]> select department, first_name, salary
+    -> from (select department, max(salary) as maxSalary
+    ->   from worker
+    ->   group by department
+    ->   order by maxSalary desc) frsub join worker using(department)
+    -> where maxSalary = salary
+    -> order by salary;
++------------+------------+--------+
+| department | first_name | salary |
++------------+------------+--------+
+| Account    | Vipul      | 200000 |
+| HR         | Vishal     | 300000 |
+| Admin      | Amitabh    | 500000 |
+| Admin      | Vivek      | 500000 |
++------------+------------+--------+
+4 rows in set (0.001 sec)
+
+MariaDB [project]> select * from worker
+    ->   order by salary
+    ->   limit 3;
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         7 | Satish     | Kumar     |  75000 | 2014-01-20 09:00:00 | Account    |
+|         2 | Niharika   | Verma     |  80000 | 2014-06-11 09:00:00 | Admin      |
+|         8 | Geetika    | Chauhan   |  90000 | 2014-04-11 09:00:00 | Admin      |
++-----------+------------+-----------+--------+---------------------+------------+
+3 rows in set (0.000 sec)
+
+MariaDB [project]> select *
+    ->   from (select distinct salary
+    ->     from worker
+    ->     order by salary
+    ->     limit 3) minThree join worker using(salary)
+    ->   order by salary;
++--------+-----------+------------+-----------+---------------------+------------+
+| salary | WORKER_ID | FIRST_NAME | LAST_NAME | JOINING_DATE        | DEPARTMENT |
++--------+-----------+------------+-----------+---------------------+------------+
+|  75000 |         7 | Satish     | Kumar     | 2014-01-20 09:00:00 | Account    |
+|  80000 |         2 | Niharika   | Verma     | 2014-06-11 09:00:00 | Admin      |
+|  90000 |         8 | Geetika    | Chauhan   | 2014-04-11 09:00:00 | Admin      |
++--------+-----------+------------+-----------+---------------------+------------+
+3 rows in set (0.001 sec)
+
+MariaDB [project]>
+MariaDB [project]> select department, sum(salary) as total
+    -> from worker
+    -> group by department
+    -> order by total desc;
++------------+---------+
+| department | total   |
++------------+---------+
+| Admin      | 1170000 |
+| HR         |  400000 |
+| Account    |  275000 |
++------------+---------+
+3 rows in set (0.003 sec)
+
+MariaDB [project]> select *
+    -> from worker
+    -> where salary in (select max(salary) from worker);
++-----------+------------+-----------+--------+---------------------+------------+
+| WORKER_ID | FIRST_NAME | LAST_NAME | SALARY | JOINING_DATE        | DEPARTMENT |
++-----------+------------+-----------+--------+---------------------+------------+
+|         4 | Amitabh    | Singh     | 500000 | 2014-02-20 09:00:00 | Admin      |
+|         5 | Vivek      | Bhati     | 500000 | 2014-06-11 09:00:00 | Admin      |
++-----------+------------+-----------+--------+---------------------+------------+
+2 rows in set (0.003 sec)
+
+
+Queries:
+Q-1. Write an SQL query to fetch “FIRST_NAME” from Worker table using the alias name as <WORKER_NAME>.
+Q-2. Write an SQL query to fetch “FIRST_NAME” from Worker table in upper case.
+Q-3. Write an SQL query to fetch unique values of DEPARTMENT from Worker table.
+Q-4. Write an SQL query to print the first three characters of  FIRST_NAME from Worker table.
+Q-5. Write an SQL query to print all Worker details from the Worker table order by FIRST_NAME Ascending.
+Q-6. Write an SQL query to print all Worker details from the Worker table order by FIRST_NAME Ascending and DEPARTMENT Descending.
+Q-7. Write an SQL query to print details of Workers with DEPARTMENT name as “Admin”.
+Q-8. Write an SQL query to print details of the Workers whose FIRST_NAME contains ‘a’.
+Q-9. Write an SQL query to print details of the Workers whose FIRST_NAME ends with ‘h’ and contains six alphabets.
+Q-10. Write an SQL query to print details of the Workers whose SALARY lies between 100000 and 500000.
+Q-11. Write an SQL query to print details of the Workers who have joined in Feb’2014.
+Q-12. Write an SQL query to fetch worker names with salaries >= 50000 and <= 100000.
+Q-13. Write an SQL query to show only odd rows from a table.
+Q-14. Write an SQL query to show only even rows from a table.
+Q-15. write query to find duplicate rows.
+Q-16. SQL intersect : Select * from TableA intersect select * from TableB  :: set theory like intersection in simple case, it's like a join.
+Q-17. Find employees in worker table that do not exist in bonus table.	
+Q-18. Find the highest 2 salaries using TOP (not in MySQL) or Limit (in MySQL).
+Q-19. Find 2nd highest without using TOP or LIMIT..
+Q-20. Find people who have the same salary
+Q.21. Query to show same row twice.
+Q-22. Query to fetch 1st 50% records.
+Q-23. Select a department with more than 3 people.
+Q-24. Select 1st and last row of a table.
+Q-25. Select last 5 entries of a table.
+Q-26. Select people with highest salary in each group
+Q-27. Select * from worker order by salary.
+Q-28. Select * from worker.
+Q-29. Minimum 3 salaries:: doesnt respect distinct,respects distinct.
+Q-30. Fetch departments along with the total salaries paid for each of them.
+Q-31. Fetch the names of workers who earn the highest salary
